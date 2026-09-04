@@ -1,0 +1,48 @@
+name: EchoMusic
+
+options:
+  bundleIdPrefix: com.echo
+  createIntermediateGroups: true
+  groupSortPosition: top
+  deploymentTarget:
+    iOS: "17.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    INFOPLIST_FILE: EchoMusic/Info.plist
+    GENERATE_INFOPLIST_FILE: NO
+    CODE_SIGN_ENTITLEMENTS: EchoMusic/EchoMusic.entitlements
+    PRODUCT_BUNDLE_IDENTIFIER: com.echo.EchoMusic
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_EMIT_LOC_STRINGS: YES
+    ENABLE_PREVIEWS: YES
+    ONLY_ACTIVE_ARCH: NO
+  configs:
+    release:
+      SWIFT_OPTIMIZATION_LEVEL: "-O"
+      SWIFT_COMPILATION_MODE: wholemodule
+      DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+      VALIDATE_PRODUCT: NO
+
+targets:
+  EchoMusic:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: EchoMusic/Sources
+        type: group
+        createIntermediateGroups: true
+      - path: EchoMusic/Resources
+        type: group
+        createIntermediateGroups: true
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_NAME: EchoMusic
+        PRODUCT_DISPLAY_NAME: Echo
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
