@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 允许调试器附加。ad-hoc / 免费证书签名时必需。 -->
+	<key>get-task-allow</key>
+	<true/>
+
+	<!--
+	  说明：后台音频权限本身来自 Info.plist 的 UIBackgroundModes=audio，
+	  不在 entitlements 里。下面这些是为后续功能预留的占位，
+	  一旦加了就必须在签名描述文件（SideStore 生成的 profile）里也有对应项，
+	  否则安装会失败。因此默认全部注释掉。
+
+	  M5 阶段要加 Widget / 灵动岛时再打开 App Groups：
+	  <key>com.apple.security.application-groups</key>
+	  <array>
+	      <string>group.com.echo.EchoMusic</string>
+	  </array>
+	-->
+</dict>
+</plist>
