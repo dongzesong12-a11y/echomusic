@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Echo · 音乐播放器原型</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#08080b; --card:rgba(255,255,255,.06); --card2:rgba(255,255,255,.1);
+  --line:rgba(255,255,255,.1); --t1:#fff; --t2:rgba(255,255,255,.62); --t3:rgba(255,255,255,.38);
+  --c1:#7F77DD; --c2:#D4537E; --safe-b:22px;
+  --f:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+}
+html,body{height:100%}
+body{background:#111114;font-family:var(--f);color:var(--t1);display:flex;align-items:center;justify-content:center;padding:24px;overflow-x:hidden}
+.stage{display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+
+/* ---------- phone shell ---------- */
+.phone{width:393px;height:852px;flex:none;background:#000;border-radius:54px;padding:11px;position:relative;
+  box-shadow:0 0 0 2px #2a2a30,0 40px 90px rgba(0,0,0,.7)}
+.screen{width:100%;height:100%;background:var(--bg);border-radius:44px;overflow:hidden;position:relative;isolation:isolate}
+.statusbar{height:52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 6px;
+  font-size:15px;font-weight:600;letter-spacing:.3px;position:relative;z-index:60;flex:none}
+.sb-r{display:flex;gap:6px;align-items:center}
+.sb-r i{display:inline-block;background:var(--t1);border-radius:1px}
+.bars{display:flex;gap:2px;align-items:flex-end;height:11px}
+.bars i{width:3px}
+.batt{width:25px;height:12px;border:1.4px solid rgba(255,255,255,.45);border-radius:3.5px;position:relative;padding:1.5px}
+.batt::after{content:"";position:absolute;right:-4px;top:3.5px;width:2px;height:5px;background:rgba(255,255,255,.4);border-radius:0 2px 2px 0}
+.batt span{display:block;height:100%;width:72%;background:var(--t1);border-radius:2px}
+
+/* ---------- pages ---------- */
+.pages{height:calc(100% - 52px - 84px);overflow:hidden;position:relative}
+.page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:0 20px 30px;opacity:0;pointer-events:none;
+  transform:translateX(14px);transition:opacity .28s ease,transform .28s cubic-bezier(.22,1,.36,1);scrollbar-width:none}
+.page::-webkit-scrollbar{display:none}
+.page.on{opacity:1;pointer-events:auto;transform:none}
+.page.out{transform:translateX(-14px)}
+.h1{font-size:32px;font-weight:700;letter-spacing:-.6px;margin:6px 0 16px}
+.sec-t{font-size:13px;font-weight:600;color:var(--t3);letter-spacing:.6px;margin:26px 0 12px;text-transform:uppercase}
+.field{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:10px 13px;color:var(--t3);font-size:15px}
+.field input{flex:1;background:none;border:none;outline:none;color:var(--t1);font-size:15px;font-family:var(--f)}
+.field input::placeholder{color:var(--t3)}
+
+/* segmented */
+.seg{display:flex;gap:6px;background:var(--card);padding:3px;border-radius:11px;margin-bottom:14px}
+.seg button{flex:1;border:none;background:none;color:var(--t2);font-size:13px;font-family:var(--f);
+  padding:7px 0;border-radius:9px;cursor:pointer;transition:.22s}
+.seg button.on{background:rgba(255,255,255,.16);color:var(--t1);font-weight:600}
+
+/* recent cards */
+.recent{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.recent::-webkit-scrollbar{display:none}
+.rcard{flex:none;width:132px;cursor:pointer}
+.cover{border-radius:12px;position:relative;overflow:hidden;background:linear-gradient(140deg,var(--c1),var(--c2));flex:none}
+.cover svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:3;display:block}
+.rcard .cover{width:132px;height:132px;box-shadow:0 10px 26px rgba(0,0,0,.5)}
+.rcard p{margin:9px 0 2px;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcard span{font-size:12px;color:var(--t3)}
+
+/* list rows */
+.row{display:flex;align-items:center;gap:13px;padding:8px 0;cursor:pointer;border-radius:12px;transition:.18s}
+.row:active{background:rgba(255,255,255,.05)}
+.row .cover{width:50px;height:50px;flex:none}
+.row .meta{flex:1;min-width:0}
+.row .meta p{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .meta span{font-size:13px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.row .tail{font-size:12.5px;color:var(--t3);flex:none}
+.acts{display:flex;gap:14px;align-items:center;flex:none}
+.acts b{font-weight:500;font-size:13px;color:var(--c1);cursor:pointer}
+.acts b:active{opacity:.6}
+.done{width:22px;height:22px;border-radius:50%;background:rgba(93,202,165,.18);display:flex;align-items:center;justify-content:center;flex:none}
+.done::after{content:"";width:5px;height:9px;border:solid #5DCAA5;border-width:0 1.8px 1.8px 0;transform:rotate(42deg) translate(-1px,-1px)}
+
+/* chips */
+.chips{display:flex;gap:7px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;font-size:13px;padding:6px 13px;border-radius:20px;background:var(--card);
+  border:1px solid var(--line);color:var(--t2);cursor:pointer;transition:.2s;white-space:nowrap}
+.chip.on{background:rgba(255,255,255,.9);color:#111;border-color:transparent;font-weight:600}
+.hot{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.hot span{font-size:13px;color:var(--t2);background:var(--card);padding:6px 12px;border-radius:16px;cursor:pointer}
+.hot span:active{background:var(--card2)}
+.tagr{display:inline-block;font-size:10.5px;font-weight:600;padding:1.5px 5px;border-radius:4px;margin-left:6px;vertical-align:1px}
+.tagr.f{background:rgba(239,159,39,.2);color:#EF9F27}
+.tagr.h{background:rgba(93,202,165,.18);color:#5DCAA5}
+
+/* empty */
+.empty{text-align:center;padding:64px 20px;color:var(--t3);font-size:14px;line-height:1.9}
+
+/* ---------- mini player ---------- */
+.mini{position:absolute;left:10px;right:10px;bottom:calc(64px + var(--safe-b));height:58px;z-index:50;
+  background:rgba(28,28,32,.82);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);
+  border:1px solid var(--line);border-radius:16px;display:flex;align-items:center;gap:11px;padding:0 12px 0 9px;
+  cursor:pointer;transition:transform .32s cubic-bezier(.22,1,.36,1),opacity .25s}
+.mini.hide{transform:translateY(90px);opacity:0;pointer-events:none}
+.mini .cover{width:40px;height:40px;flex:none}
+.mini .m{flex:1;min-width:0}
+.mini .m p{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini .m span{font-size:11.5px;color:var(--t3)}
+.mpb{position:absolute;left:9px;right:9px;bottom:3px;height:2px;background:rgba(255,255,255,.14);border-radius:2px;overflow:hidden}
+.mpb i{display:block;height:100%;width:0;background:var(--t1);border-radius:2px}
+.mbtn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex:none;border:none;background:none;cursor:pointer}
+.mbtn::before{content:"";display:block}
+.mbtn.play::before{width:0;height:0;border-left:11px solid var(--t1);border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px}
+.mbtn.pause::before{width:10px;height:13px;border-left:3.5px solid var(--t1);border-right:3.5px solid var(--t1)}
+.mbtn.next::before{width:0;height:0;border-left:11px solid var(--t1);border-top:7px solid transparent;border-bottom:7px solid transparent}
+.mbtn.next::after{content:"";width:2.5px;height:14px;background:var(--t1);margin-left:2px}
+
+/* ---------- tab bar ---------- */
+.tabbar{position:absolute;left:10px;right:10px;bottom:8px;height:64px;z-index:55;display:flex;
+  background:rgba(22,22,26,.72);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);
+  border:1px solid var(--line);border-radius:22px;padding:6px 0 calc(6px + var(--safe-b))}
+.tab{flex:1;border:none;background:none;color:var(--t3);font-family:var(--f);font-size:10.5px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:4px;transition:.2s;padding-top:4px}
+.tab svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tab.on{color:#fff}
+.tab.on svg{stroke-width:2.1}
+
+/* ---------- now playing ---------- */
+.np{position:absolute;inset:0;z-index:70;background:var(--bg);display:flex;flex-direction:column;
+  transform:translateY(100%);transition:transform .46s cubic-bezier(.22,1,.36,1);overflow:hidden}
+.np.on{transform:none}
+.npbg{position:absolute;inset:-25%;z-index:0;
+  background:radial-gradient(60% 55% at 50% 22%,var(--c1),transparent 68%),radial-gradient(70% 60% at 20% 88%,var(--c2),transparent 70%);
+  filter:blur(70px);opacity:.5;transition:opacity .5s}
+.npbgart{position:absolute;inset:-45%;z-index:0;filter:blur(58px) saturate(165%);opacity:.85;transform:scale(1.15);
+  transition:opacity .6s}
+.npbgart svg{width:100%;height:100%;display:block}
+.np::after{content:"";position:absolute;inset:0;z-index:1;
+  background:linear-gradient(180deg,rgba(8,8,11,.18),rgba(8,8,11,.55) 44%,rgba(8,8,11,.9))}
+/* 曲库页顶部的模糊封面横幅 */
+.libbg{position:absolute;left:-20px;right:-20px;top:-52px;height:270px;z-index:-1;
+  filter:blur(52px) saturate(150%);opacity:.5;transition:opacity .6s}
+.libbg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,8,11,.1),var(--bg))}
+.libbg svg{width:100%;height:100%;display:block}
+.np > *{position:relative;z-index:2}
+.nptop{display:flex;align-items:center;justify-content:space-between;padding:14px 24px 0;flex:none}
+.nptop button{border:none;background:none;cursor:pointer;color:var(--t1);width:34px;height:34px;display:flex;
+  align-items:center;justify-content:center;border-radius:50%;transition:.2s}
+.nptop button:active{background:rgba(255,255,255,.12)}
+.nptop svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.npfrom{font-size:11px;color:var(--t3);letter-spacing:.4px}
+.npfrom b{display:block;font-size:13px;color:var(--t1);font-weight:600;letter-spacing:0;margin-top:2px}
+
+.npart{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 34px;min-height:0}
+.bigcover{width:100%;max-width:308px;aspect-ratio:1;border-radius:20px;position:relative;overflow:hidden;
+  box-shadow:0 34px 70px rgba(0,0,0,.62);transition:transform .5s cubic-bezier(.22,1,.36,1)}
+.np.on .bigcover{animation:pop .55s cubic-bezier(.22,1,.36,1)}
+@keyframes pop{from{transform:scale(.9);opacity:.5}to{transform:scale(1);opacity:1}}
+.npArtImg{position:absolute;inset:0;z-index:1}
+.npArtImg svg{width:100%;height:100%;display:block;position:absolute;inset:0}
+.npArtImg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.spectrum{position:absolute;left:0;right:0;bottom:0;height:74px;z-index:2;display:flex;align-items:flex-end;gap:3px;padding:0 12px 12px}
+.spectrum i{flex:1;background:rgba(255,255,255,.9);border-radius:2px;height:4px;transition:height .11s linear}
+
+.npinfo{padding:0 30px;flex:none}
+.npinfo h2{font-size:25px;font-weight:700;letter-spacing:-.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.npinfo p{font-size:17px;color:var(--t2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.barwrap{padding:16px 30px 0;flex:none}
+.bar{height:6px;background:rgba(255,255,255,.2);border-radius:3px;position:relative;cursor:pointer}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:#fff;border-radius:3px;width:0}
+.bar b{position:absolute;top:50%;width:14px;height:14px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);
+  left:0;box-shadow:0 2px 8px rgba(0,0,0,.5);opacity:0;transition:opacity .2s}
+.bar:hover b,.bar:active b{opacity:1}
+.times{display:flex;justify-content:space-between;font-size:12px;color:var(--t3);margin-top:8px;font-variant-numeric:tabular-nums}
+
+.ctrls{display:flex;align-items:center;justify-content:space-between;padding:14px 34px 0;flex:none}
+.ctrls button{border:none;background:none;cursor:pointer;color:var(--t1);display:flex;align-items:center;justify-content:center;transition:.16s}
+.ctrls button:active{transform:scale(.88);opacity:.7}
+.ctrls svg{stroke:currentColor;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.cs{width:40px;height:40px}.cs svg{width:19px;height:19px;stroke-width:2}
+.cmain{width:66px;height:66px}.cmain svg{width:30px;height:30px}
+.cmain.play svg{fill:currentColor;stroke:none}
+.dim{color:rgba(255,255,255,.4)}
+.npfoot{display:flex;justify-content:space-between;padding:18px 40px calc(10px + var(--safe-b));flex:none}
+.npfoot button{border:none;background:none;color:var(--t2);font-size:12.5px;font-family:var(--f);display:flex;
+  flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:.2s}
+.npfoot button:active{color:#fff}
+.npfoot svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- lyrics ---------- */
+.lyr{position:absolute;inset:0;z-index:80;background:rgba(8,8,11,.9);backdrop-filter:blur(30px);
+  -webkit-backdrop-filter:blur(30px);transform:translateY(100%);transition:transform .44s cubic-bezier(.22,1,.36,1);
+  display:flex;flex-direction:column;overflow:hidden}
+.lyr.on{transform:none}
+.lyrtop{display:flex;align-items:center;justify-content:space-between;padding:16px 24px 8px;flex:none}
+.lyrtop button{border:none;background:none;color:var(--t1);cursor:pointer;font-size:13px;font-family:var(--f);
+  display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:20px;transition:.2s}
+.lyrtop button:active{background:rgba(255,255,255,.12)}
+.lyrbody{flex:1;overflow-y:auto;padding:22% 30px 60%;scrollbar-width:none}
+.lyrbody::-webkit-scrollbar{display:none}
+.lyrbody p{font-size:21px;font-weight:700;line-height:1.42;color:rgba(255,255,255,.26);margin:15px 0;
+  transition:color .3s,transform .3s,opacity .3s;transform-origin:left center;cursor:pointer}
+.lyrbody p.cur{color:#fff;transform:scale(1.045)}
+.lyrbody p.near{color:rgba(255,255,255,.46)}
+
+/* ---------- toast ---------- */
+.toast{position:absolute;left:50%;bottom:150px;transform:translate(-50%,14px);z-index:120;background:rgba(40,40,46,.94);
+  backdrop-filter:blur(20px);border:1px solid var(--line);color:#fff;font-size:13.5px;padding:11px 18px;border-radius:14px;
+  opacity:0;pointer-events:none;transition:.3s;white-space:nowrap;max-width:80%}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- side notes ---------- */
+.notes{width:290px;color:#8a8a92;font-size:13px;line-height:1.85;flex:none;padding-top:8px}
+.notes h3{color:#e6e6ea;font-size:15px;font-weight:600;margin-bottom:14px;letter-spacing:.2px}
+.notes ol{padding-left:17px}
+.notes li{margin-bottom:9px}
+.notes b{color:#cfcfd8;font-weight:600}
+.notes .tv{color:#7F77DD}
+.notes hr{border:none;border-top:1px solid rgba(255,255,255,.1);margin:18px 0}
+#artToggle.on{background:rgba(127,119,221,.26)!important;border-color:rgba(127,119,221,.55)!important;color:#cfc9ff!important}
+@media(max-width:940px){.notes{display:none}}
+@media(max-width:430px){body{padding:0}.phone{width:100vw;height:100vh;border-radius:0;padding:0;box-shadow:none}
+  .screen{border-radius:0}}
+</style>
+</head>
+<body>
+<div class="stage">
+
+<div class="phone">
+<div class="screen">
+
+  <div class="statusbar">
+    <span id="clock">9:41</span>
+    <div class="sb-r">
+      <span class="bars"><i style="height:4px"></i><i style="height:7px"></i><i style="height:10px"></i><i style="height:11px"></i></span>
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="none"><path d="M1 4.2a10 10 0 0 1 15 0" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><path d="M4 7.2a6 6 0 0 1 9 0" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8.5" cy="10.4" r="1.3" fill="#fff"/></svg>
+      <span class="batt"><span></span></span>
+    </div>
+  </div>
+
+  <div class="pages">
+
+    <!-- ============ 曲库 ============ -->
+    <section class="page on" id="p-lib">
+      <div class="libbg" id="libbg"></div>
+      <div class="h1">曲库</div>
+      <label class="field">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+        <input id="libSearch" placeholder="搜索曲库中的歌曲、专辑、艺术家">
+      </label>
+
+      <div class="sec-t">最近播放</div>
+      <div class="recent" id="recent"></div>
+
+      <div class="sec-t">全部歌曲</div>
+      <div class="seg" id="segLib">
+        <button class="on" data-v="all">歌曲</button><button data-v="album">专辑</button>
+        <button data-v="artist">艺术家</button><button data-v="folder">文件夹</button>
+      </div>
+      <div id="libList"></div>
+      <div class="empty" id="libEmpty" style="display:none">没有匹配的歌曲<br>换个关键词试试</div>
+    </section>
+
+    <!-- ============ 搜索 ============ -->
+    <section class="page" id="p-search">
+      <div class="h1">搜索</div>
+      <label class="field">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+        <input id="q" placeholder="搜索想听的歌，或粘贴歌名">
+      </label>
+      <div class="chips" id="srcChips" style="margin-top:12px">
+        <button class="chip on" data-s="all">全部音源</button>
+        <button class="chip" data-s="1">自建网关</button>
+        <button class="chip" data-s="2">音源插件 A</button>
+        <button class="chip" data-s="3">自由版权</button>
+      </div>
+      <div id="resBox"></div>
+      <div id="hotBox">
+        <div class="sec-t">大家都在搜</div>
+        <div class="hot" id="hot"></div>
+        <div class="sec-t">音源状态</div>
+        <div id="srcStat"></div>
+      </div>
+    </section>
+
+    <!-- ============ 下载 ============ -->
+    <section class="page" id="p-dl">
+      <div class="h1">下载</div>
+      <div id="dlBody"></div>
+    </section>
+
+  </div>
+
+  <!-- mini player -->
+  <div class="mini hide" id="mini">
+    <div class="cover" id="miniArt"></div>
+    <div class="m"><p id="miniT">—</p><span id="miniA">—</span></div>
+    <button class="mbtn play" id="miniBtn"></button>
+    <button class="mbtn next" id="miniNext"></button>
+    <div class="mpb"><i id="miniBar"></i></div>
+  </div>
+
+  <!-- tab bar -->
+  <div class="tabbar">
+    <button class="tab on" data-p="p-lib">
+      <svg viewBox="0 0 24 24"><path d="M4 19V6a1 1 0 0 1 1-1h5v15"/><path d="M10 6h9a1 1 0 0 1 1 1v12"/><path d="M4 19h16"/></svg>曲库</button>
+    <button class="tab" data-p="p-search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>搜索</button>
+    <button class="tab" data-p="p-dl">
+      <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4 19h16"/></svg>下载</button>
+    <button class="tab" data-p="p-lib">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .33 1.76l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.76-.33 1.6 1.6 0 0 0-1 1.47V21a2 2 0 1 1-4 0v-.09A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.76.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.6 1.6 0 0 0 .33-1.76 1.6 1.6 0 0 0-1.47-1H3a2 2 0 1 1 0-4h.09A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.33-1.76l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.6 1.6 0 0 0 9 4.6a1.6 1.6 0 0 0 1-1.47V3a2 2 0 1 1 4 0v.09a1.6 1.6 0 0 0 1 1.47 1.6 1.6 0 0 0 1.76-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.6 1.6 0 0 0 19.4 9v.09a1.6 1.6 0 0 0 1.47 1H21a2 2 0 1 1 0 4h-.09a1.6 1.6 0 0 0-1.47 1z"/></svg>设置</button>
+  </div>
+
+  <!-- now playing -->
+  <div class="np" id="np">
+    <div class="npbg" id="npbg"></div>
+    <div class="npbgart" id="npbgart"></div>
+    <div class="nptop">
+      <button id="npClose" title="收起"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="npfrom">正在播放<b id="npFrom">曲库</b></div>
+      <button id="npMore" title="更多"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none"/></svg></button>
+    </div>
+    <div class="npart">
+      <div class="bigcover cover" id="npArt">
+        <div class="npArtImg" id="npArtImg"></div>
+        <div class="spectrum" id="spec"></div>
+      </div>
+    </div>
+    <div class="npinfo"><h2 id="npT">—</h2><p id="npA">—</p></div>
+    <div class="barwrap">
+      <div class="bar" id="bar"><i id="barFill"></i><b id="barDot"></b></div>
+      <div class="times"><span id="tCur">0:00</span><span id="tDur">0:00</span></div>
+    </div>
+    <div class="ctrls">
+      <button class="cs" id="btnShuffle" title="随机播放"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg></button>
+      <button class="cs" id="btnPrev" title="上一首"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 6h2.2v12H7z"/><path d="M20 6v12L9.8 12z"/></svg></button>
+      <button class="cmain play" id="btnPlay" title="播放/暂停"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></button>
+      <button class="cs" id="btnNext" title="下一首"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M14.8 6H17v12h-2.2z"/><path d="M4 6v12l10.2-6z"/></svg></button>
+      <button class="cs" id="btnRepeat" title="循环模式"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></button>
+    </div>
+    <div class="npfoot">
+      <button id="openLyr"><svg viewBox="0 0 24 24"><path d="M9 18V6l10.5 12V6"/></svg>歌词</button>
+      <button id="openQueue"><svg viewBox="0 0 24 24"><path d="M3 6h13"/><path d="M3 12h13"/><path d="M3 18h9"/><circle cx="18.5" cy="17" r="2.4"/></svg>播放队列</button>
+    </div>
+  </div>
+
+  <!-- lyrics -->
+  <div class="lyr" id="lyr">
+    <div class="lyrtop">
+      <button id="lyrClose"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>收起</button>
+      <button id="lyrFit"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>校准</button>
+    </div>
+    <div class="lyrbody" id="lyrBody"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+</div>
+</div>
+
+<aside class="notes">
+  <h3>Echo · 交互原型 v0.1</h3>
+  <ol>
+    <li><b>点歌</b>：曲库里点任意一首，进入播放页。注意顶栏的<b>取色动态主题</b>——背景渐变会跟着封面主色变。</li>
+    <li><b>播控</b>：播放时封面上有<b>实时频谱</b>，进度条走字，底部 Mini 播放器同步。</li>
+    <li><b>歌词</b>：播放页点「歌词」，逐行高亮跟随进度；点某一行可跳转。</li>
+    <li><b>搜索</b>：输入歌名或点热搜词，看<b>多音源聚合结果</b>；切顶部音源标签会重新聚合。</li>
+    <li><b>下载</b>：点右侧「下载」，进度会跑，完成后自动进曲库（并带上封面和歌词）。</li>
+    <li><b>进度条</b>可拖动，上下曲可切。</li>
+    <li><b>封面风格</b>：默认按曲风生成矢量插画（落日／晴空／霓虹／雾山／星夜／声波）。点下面按钮可切到真实照片对比。</li>
+  </ol>
+  <div style="margin:16px 0 14px"><button id="artToggle" style="border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#cfcfd8;font-family:var(--f);font-size:12.5px;padding:8px 14px;border-radius:10px;cursor:pointer;transition:.2s">封面：矢量插画</button></div>
+  <hr>
+  <div><span class="tv">这是浏览器里的高保真原型</span>，不是最终 App。设计锁死后再写 Swift，避免在 10 分钟一轮的云端编译里试错。</div>
+  <div style="margin-top:12px;color:#6e6e78">真机上封面会来自：音频内嵌标签 / 音乐平台接口 / 用户手动设置，不会是插画也不是随机照片。</div>
+</aside>
+
+</div>
+
+<script>
+/* ---------------- 封面插画（按音乐风格分 6 套） ---------------- */
+const ART={
+ /* 落日海面 —— City Pop / 温暖抒情 */
+ sunset:(c1,c2,g)=>`<svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="${g}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset=".58" stop-color="${c2}"/><stop offset="1" stop-color="#2b1233"/></linearGradient>
+<radialGradient id="${g}g"><stop offset="0" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+<rect width="300" height="300" fill="url(#${g}s)"/>
+<circle cx="150" cy="156" r="88" fill="url(#${g}g)"/><circle cx="150" cy="156" r="44" fill="#fff" opacity=".93"/>
+<g fill="#1a0d20" opacity=".32">${[190,200,211,225,243,265,291].map((y,i)=>`<rect y="${y}" width="300" height="${2+i}"/>`).join('')}</g>
+<path d="M0 300V246Q75 226 150 248T300 230V300Z" fill="#1a0d20" opacity=".72"/></svg>`,
+
+ /* 晴空白云 —— 民谣 / 流行 */
+ day:(c1,c2,g)=>`<svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="${g}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset=".68" stop-color="${c2}"/><stop offset="1" stop-color="#dff0e3"/></linearGradient>
+<radialGradient id="${g}g"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+<rect width="300" height="300" fill="url(#${g}s)"/>
+<circle cx="238" cy="56" r="54" fill="url(#${g}g)"/><circle cx="238" cy="56" r="26" fill="#fff"/>
+<g fill="#fff" opacity=".92"><ellipse cx="76" cy="74" rx="35" ry="17"/><ellipse cx="106" cy="63" rx="24" ry="14"/>
+<ellipse cx="50" cy="68" rx="19" ry="11"/><ellipse cx="184" cy="114" rx="29" ry="13"/><ellipse cx="208" cy="107" rx="18" ry="10"/></g>
+<path d="M0 300V214Q70 186 150 212T300 198V300Z" fill="#5f9160" opacity=".85"/>
+<path d="M0 300V252Q90 232 180 254T300 240V300Z" fill="#2f5a35" opacity=".95"/></svg>`,
+
+ /* 霓虹都市 —— 合成器浪潮 / 电子 */
+ neon:(c1,c2,g)=>{
+  const verts=[...Array(11)].map((_,i)=>`<line x1="150" y1="188" x2="${-150+i*60}" y2="300" stroke="${c1}" stroke-width=".9" opacity=".5"/>`).join('');
+  const hors=[...Array(9)].map((_,i)=>`<line x1="0" y1="${(190+Math.pow(i,1.9)*2).toFixed(1)}" x2="300" y2="${(190+Math.pow(i,1.9)*2).toFixed(1)}" stroke="${c2}" stroke-width=".9" opacity=".42"/>`).join('');
+  const bld=[...Array(13)].map((_,i)=>{const w=16+(i*7)%14,h=28+((i*53)%64),x=i*24-6;
+   let win='';for(let r=0;r<Math.floor(h/13);r++)for(let cc=0;cc<Math.floor(w/9);cc++)
+     if((i+r+cc)%3===0)win+=`<rect x="${(x+3+cc*9).toFixed(0)}" y="${(188-h+6+r*13).toFixed(0)}" width="3.5" height="5" fill="#ffe9a8" opacity=".9"/>`;
+   return `<rect x="${x}" y="${188-h}" width="${w}" height="${h}" fill="#140a22"/>${win}`}).join('');
+  const stars=[...Array(46)].map((_,i)=>i%3?`<circle cx="${(i*79)%300}" cy="${(i*47)%118}" r="${((i%3)*0.4+0.6).toFixed(1)}" fill="#fff" opacity=".7"/>`:'').join('');
+  return `<svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="${g}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#150a24"/><stop offset=".52" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>
+<radialGradient id="${g}g"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".55" stop-color="${c2}" stop-opacity=".45"/><stop offset="1" stop-color="${c2}" stop-opacity="0"/></radialGradient></defs>
+<rect width="300" height="300" fill="url(#${g}s)"/>${stars}
+<circle cx="150" cy="138" r="76" fill="url(#${g}g)"/><circle cx="150" cy="138" r="46" fill="#fff" opacity=".92"/>
+${hors}${verts}${bld}</svg>`},
+
+ /* 雾中山峦 —— 氛围 / 轻音乐 */
+ mist:(c1,c2,g)=>`<svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="${g}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset=".62" stop-color="${c2}"/><stop offset="1" stop-color="#eaf4f2"/></linearGradient></defs>
+<rect width="300" height="300" fill="url(#${g}s)"/>
+<circle cx="208" cy="84" r="30" fill="#fff" opacity=".72"/>
+<path d="M0 300V196L58 132 108 186 152 126 208 190 252 146 300 198V300Z" fill="${c2}" opacity=".38"/>
+<path d="M0 300V224L70 170 126 216 178 166 236 212 300 180V300Z" fill="${c1}" opacity=".58"/>
+<path d="M0 300V258Q80 232 160 256T300 242V300Z" fill="#123a35" opacity=".82"/></svg>`,
+
+ /* 星夜山脊 —— 摇滚 / 励志 */
+ night:(c1,c2,g)=>`<svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="${g}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050a1e"/><stop offset=".54" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>
+<radialGradient id="${g}g"><stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset=".32" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>
+<rect width="300" height="300" fill="url(#${g}s)"/>
+<g fill="#fff">${[...Array(72)].map((_,i)=>i%5?`<circle cx="${(i*97)%300}" cy="${(i*61)%196}" r="${((i%4)*0.35+0.5).toFixed(1)}" opacity="${(0.3+(i%7)*0.1).toFixed(2)}"/>`:'').join('')}</g>
+<circle cx="104" cy="80" r="48" fill="url(#${g}g)"/>
+<path d="M104 28v104M50 80h108" stroke="#fff" stroke-width="1.1" opacity=".5" stroke-linecap="round"/>
+<circle cx="104" cy="80" r="7" fill="#fff"/>
+<path d="M0 300V226L64 166 122 212 176 156 232 204 300 170V300Z" fill="#060a18" opacity=".92"/></svg>`,
+
+ /* 声波 —— 电子 / 纯音乐 */
+ pulse:(c1,c2,g)=>`<svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="${g}s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
+<rect width="300" height="300" fill="url(#${g}s)"/>
+<g fill="none" stroke="#fff" stroke-opacity=".28">${[...Array(6)].map((_,i)=>`<circle cx="150" cy="150" r="${30+i*24}" stroke-width="${(2.4-i*0.3).toFixed(1)}"/>`).join('')}</g>
+<g fill="#fff">${[...Array(21)].map((_,i)=>{const h=8+Math.abs(Math.sin(i*0.9))*54;return `<rect x="${(20+i*12.6).toFixed(1)}" y="${(150-h/2).toFixed(1)}" width="6" height="${h.toFixed(0)}" rx="3" opacity="${(0.5+Math.abs(Math.sin(i*0.9))*0.5).toFixed(2)}"/>`}).join('')}</g></svg>`
+};
+
+/* ---------------- data ---------------- */
+const T = [
+ {id:1,t:'夏日晚风',a:'落日飞车',al:'Bossa Nova',d:252,c:['#F5A623','#F76B1C'],art:'sunset'},
+ {id:2,t:'晴天',a:'周杰伦',al:'叶惠美',d:269,c:['#4A90D9','#7B68EE'],art:'day'},
+ {id:3,t:'Midnight City',a:'M83',al:"Hurry Up, We're Dreaming",d:244,c:['#D4537E','#7F77DD'],art:'neon'},
+ {id:4,t:'Weightless',a:'Marconi Union',al:'Ambient Transmissions',d:301,c:['#1D9E75','#378ADD'],art:'mist'},
+ {id:5,t:'夜空中最亮的星',a:'逃跑计划',al:'世界',d:252,c:['#534AB7','#185FA5'],art:'night'},
+];
+const LYR = {
+ 1:[[0,'夜色像一杯温热的酒'],[8,'把整个夏天都泡软了'],[16,'风从巷口拐进来'],[24,'带着栀子花的味道'],[34,'我们坐在天台上'],[42,'数不清的星星'],[52,'— 间奏 —'],[70,'你说时间过得真慢'],[78,'慢到可以浪费一整晚'],[88,'晚风轻轻吹过'],[96,'吹过我们的十七岁'],[108,'如果夏天不会结束'],[116,'那就这样一直坐着'],[128,'— 间奏 —'],[150,'夜色像一杯温热的酒'],[158,'把整个夏天都泡软了'],[170,'风从巷口拐进来'],[178,'带着栀子花的味道'],[190,'我们坐在天台上'],[198,'数不清的星星']],
+ 2:[[0,'故事的小黄花'],[6,'从出生那年就飘着'],[13,'童年的荡秋千'],[19,'随记忆一直晃到现在'],[28,'Re So So Si Do Si La'],[33,'So La Si Si Si Si La Si La So'],[42,'刮风这天我试过握着你手'],[50,'但偏偏雨渐渐'],[55,'大到我看你不见'],[64,'还要多久我才能在你身边'],[72,'等到放晴的那天'],[78,'也许我会比较好一点'],[88,'从前从前有个人爱你很久'],[96,'偏偏风渐渐'],[101,'把距离吹得好远'],[110,'好不容易又能再多爱一天'],[118,'但故事的最后你好像还是说了拜拜']],
+ 3:[[0,'Waiting in the neon glow'],[7,'The city hums a lullaby'],[15,'Every window holds a ghost'],[23,'Of someone learning how to fly'],[34,'Midnight city, midnight city'],[43,'We are the ones who never sleep'],[52,'— instrumental —'],[78,'Midnight city, midnight city'],[87,'The lights will never let us go'],[100,'— instrumental —'],[140,'Midnight city, midnight city'],[150,'Hold on to something you can keep'],[170,'Midnight city, midnight city'],[180,'The lights will never let us go']],
+ 4:[[0,'（纯音乐，请欣赏）'],[40,'— ambient drift —'],[120,'— slow return —'],[220,'— fade —']],
+ 5:[[0,'夜空中最亮的星'],[7,'能否听清'],[13,'那仰望的人'],[19,'心底的孤独和叹息'],[30,'夜空中最亮的星'],[37,'能否记起'],[43,'那曾与我同行'],[49,'消失在风里的身影'],[60,'我祈祷拥有一颗透明的心灵'],[69,'和会流泪的眼睛'],[77,'给我再去相信的勇气'],[85,'越过谎言去拥抱你'],[98,'每当我找不到存在的意义'],[107,'每当我迷失在黑夜里'],[116,'夜空中最亮的星'],[123,'请照亮我前行']]
+};
+const SRC = ['自建网关','音源插件 A','自由版权'];
+const SEEDS = [
+ {t:'晴天',a:'周杰伦',al:'叶惠美',c:['#4A90D9','#7B68EE'],art:'day'},
+ {t:'夜空中最亮的星',a:'逃跑计划',al:'世界',c:['#534AB7','#185FA5'],art:'night'},
+ {t:'起风了',a:'买辣椒也用券',al:'起风了',c:['#EF9F27','#D85A30'],art:'day'},
+ {t:'富士山下',a:'陈奕迅',al:"What's Going On…?",c:['#888780','#5F5E5A'],art:'mist'},
+ {t:'Blinding Lights',a:'The Weeknd',al:'After Hours',c:['#E24B4A','#BA7517'],art:'neon'},
+ {t:'漠河舞厅',a:'柳爽',al:'漠河舞厅',c:['#1D9E75','#0F6E56'],art:'night'},
+ {t:'Viva La Vida',a:'Coldplay',al:'Viva La Vida',c:['#D4537E','#993C1D'],art:'sunset'},
+ {t:'海阔天空',a:'Beyond',al:'乐与怒',c:['#378ADD','#0C447C'],art:'night'},
+ {t:'Sunset Drive',a:'Yohuna',al:'Mirroring',c:['#F0997B','#993C1D'],art:'sunset'},
+ {t:'Ambient 01',a:'Brian Eno',al:'Music for Airports',c:['#5DCAA5','#0F6E56'],art:'pulse'}
+];
+const QUAL = [['FLAC','无损','f',32.4],['320K','高品','h',9.8],['128K','标准','',4.1]];
+const STAT = [['自建网关','已连接','#5DCAA5'],['音源插件 A','正常','#5DCAA5'],['自由版权','正常','#5DCAA5']];
+
+/* ---------------- state ---------------- */
+let cur=null, playing=false, pos=0, timer=null, queue=[], qi=0;
+let shuffle=false, repeat='all';
+let downloads=[], results=[];
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+/* 封面：矢量插画（默认） / 真实照片（可切换，失败自动回落到插画） */
+let PHOTO=false, uidN=0;
+const artCache={};
+function artSVG(t){
+  const key=(t.art||'sunset')+t.c[0]+t.c[1];
+  if(artCache[key])return artCache[key];
+  const fn=ART[t.art]||ART.sunset;
+  return artCache[key]=fn(t.c[0],t.c[1],'g'+(++uidN));
+}
+function artHTML(t){
+  const img=PHOTO?`<img src="https://picsum.photos/seed/${encodeURIComponent(t.t+t.a)}/400/400" alt="" loading="lazy" onerror="this.remove()">`:'';
+  return artSVG(t)+img;
+}
+function cov(t,cls){
+  return `<div class="cover ${cls||''}" style="--c1:${t.c[0]};--c2:${t.c[1]}">${artHTML(t)}</div>`;
+}
+/* 播放页 / 曲库页的模糊背景：直接用封面图放大虚化，而不是纯色块 */
+function paintBg(t){
+  const svg=artSVG(t);
+  $('#npbgart').innerHTML=svg;
+  $('#libbg').innerHTML=svg;
+  $('#libbg').style.opacity='.5';
+}
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1900)}
+function setClock(){const d=new Date();$('#clock').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')}
+setClock();setInterval(setClock,20000);
+
+/* ---------------- library ---------------- */
+function renderLib(){
+  const q=$('#libSearch').value.trim().toLowerCase();
+  const view=$('#segLib .on').dataset.v;
+  let list=T.filter(x=>!q||(x.t+x.a+x.al).toLowerCase().includes(q));
+  if(view==='album'){list=[...new Map(T.map(x=>[x.al,{t:x.al,a:x.al+ ' · '+T.filter(y=>y.al===x.al).length+' 首',al:x.al,d:0,c:x.c}])).values()]}
+  if(view==='artist'){list=[...new Map(T.map(x=>[x.a,{t:x.a,a:'艺术家 · '+T.filter(y=>y.a===x.a).length+' 首',al:x.a,d:0,c:x.c}])).values()]}
+  if(view==='folder'){list=[{t:'Music',a:'文件夹 · '+T.length+' 首',al:'folder',d:0,c:['#5F5E5A','#2C2C2A']}]}
+  if(q)list=list.filter(x=>(x.t+x.a).toLowerCase().includes(q));
+  const firstOf=x=>{const g=T.find(y=>y.al===x.al||y.a===x.t);return g?g.t:T[0].t};
+  $('#libList').innerHTML=list.map(x=>`
+    <div class="row" data-play="${esc(view==='all'?x.t:firstOf(x))}">
+      ${cov(x)}<div class="meta"><p>${esc(x.t)}</p><span>${esc(x.a)}</span></div>
+      <div class="tail">${x.d?fmt(x.d):''}</div>
+    </div>`).join('');
+  $('#libEmpty').style.display=list.length?'none':'block';
+  $$('#libList .row').forEach(r=>r.onclick=()=>{
+    const t=T.find(y=>y.t===r.dataset.play); if(t)play(t);
+  });
+  $('#recent').innerHTML=T.slice(0,4).map(x=>`
+    <div class="rcard" data-t="${esc(x.t)}">${cov(x)}<p>${esc(x.t)}</p><span>${esc(x.a)}</span></div>`).join('');
+  $$('#recent .rcard').forEach(r=>r.onclick=()=>{const t=T.find(y=>y.t===r.dataset.t);if(t)play(t)});
+}
+$('#libSearch').oninput=renderLib;
+$('#segLib').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  $$('#segLib button').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderLib()};
+
+/* ---------------- search ---------------- */
+function buildResults(q){
+  const pool=SEEDS.filter(s=>!q||(s.t+s.a).toLowerCase().includes(q));
+  const out=[];
+  pool.forEach((s,k)=>{
+    const n=q?3:2;
+    for(let i=0;i<n;i++){
+      const qq=QUAL[i+(k%2===0?0:0)]||QUAL[2];
+      out.push({...s,uid:s.t+i,src:SRC[(k+i)%3],q:qq[0],qn:qq[1],qc:qq[2],size:(qq[3]*(0.8+((k+i)%5)/10)).toFixed(1),
+                lyricSrc:i===0});
+    }
+  });
+  return out;
+}
+function renderRes(){
+  const q=$('#q').value.trim().toLowerCase();
+  const sf=$('#srcChips .on').dataset.s;
+  if(!q){$('#resBox').innerHTML='';$('#hotBox').style.display='';return}
+  $('#hotBox').style.display='none';
+  results=buildResults(q).filter(r=>sf==='all'||(sf==='1'&&r.src===SRC[0])||(sf==='2'&&r.src===SRC[1])||(sf==='3'&&r.src===SRC[2]));
+  $('#resBox').innerHTML=`<div class="sec-t">聚合结果 · ${results.length} 条（已按歌曲去重分组）</div>`+
+    results.map((r,i)=>{
+      const dl=downloads.find(d=>d.uid===r.uid);
+      const right = dl ? (dl.p<100?`<span style="font-size:12.5px;color:var(--t3)">${Math.floor(dl.p)}%</span>`
+        :`<span class="done"></span>`) : `<b data-i="${i}">下载</b>`;
+      return `<div class="row" data-i="${i}">
+        ${cov(r)}
+        <div class="meta"><p>${esc(r.t)}<span class="tagr ${r.qc}">${r.q}</span></p>
+          <span>${esc(r.a)} · ${esc(r.src)} · ${r.size} MB</span></div>
+        <div class="acts">${right}</div></div>`;
+    }).join('');
+  $$('#resBox .row').forEach(row=>{
+    const i=+row.dataset.i, r=results[i];
+    row.querySelector('.meta').onclick=()=>{
+      // preview
+      play({id:'p'+i,t:r.t,a:r.a,al:r.al,d:210,c:r.c,src:r.src},true);
+    };
+    const b=row.querySelector('b'); if(b) b.onclick=e=>{e.stopPropagation();startDl(r)};
+  });
+}
+$('#q').oninput=renderRes;
+$('#srcChips').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;
+  $$('#srcChips .chip').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderRes()};
+$('#hot').innerHTML=SEEDS.map(s=>`<span>${esc(s.t)}</span>`).join('');
+$$('#hot span').forEach(s=>s.onclick=()=>{$('#q').value=s.textContent;renderRes()});
+$('#srcStat').innerHTML=STAT.map(s=>`<div class="row" style="cursor:default">
+  <div class="cover" style="--c1:${s[2]};--c2:${s[2]};width:34px;height:34px"></div>
+  <div class="meta"><p style="font-size:14px">${s[0]}</p><span style="font-size:12px">${s[1]}</span></div>
+  <div class="tail" style="color:${s[2]}">正常</div></div>`).join('');
+
+/* ---------------- downloads ---------------- */
+function startDl(r){
+  if(downloads.find(d=>d.uid===r.uid))return toast('已在下载队列中');
+  downloads.push({...r,p:0});
+  renderDl();renderRes();
+  const rec=downloads.find(d=>d.uid===r.uid);
+  const iv=setInterval(()=>{
+    rec.p+=2.5+Math.random()*5;
+    if(rec.p>=100){
+      rec.p=100;clearInterval(iv);
+      if(!T.find(x=>x.t===r.t))T.push({id:Date.now(),t:r.t,a:r.a,al:r.al,d:210,c:r.c,art:r.art,src:'dl'});
+      renderLib();renderDl();renderRes();
+      toast('已下载并写入封面与歌词');
+    }else{renderDl();renderRes()}
+  },110);
+}
+function renderDl(){
+  const act=downloads.filter(d=>d.p<100), fin=downloads.filter(d=>d.p>=100);
+  let h='';
+  if(!downloads.length)h=`<div class="empty">还没有下载任务<br>去「搜索」页找首歌试试</div>`;
+  if(act.length)h+=`<div class="sec-t">进行中 · ${act.length}</div>`+act.map(d=>`
+    <div class="row" style="cursor:default">${cov(d)}
+      <div class="meta"><p>${esc(d.t)}</p>
+        <span style="display:flex;align-items:center;gap:8px;margin-top:6px">
+          <span style="flex:1;height:3px;background:rgba(255,255,255,.16);border-radius:2px;display:block">
+            <i style="display:block;height:100%;width:${d.p}%;background:#fff;border-radius:2px"></i></span>
+          <em style="font-style:normal;font-size:11.5px">${Math.floor(d.p)}%</em></span></div></div>`).join('');
+  if(fin.length)h+=`<div class="sec-t">已完成 · ${fin.length}</div>`+fin.map(d=>`
+    <div class="row" data-t="${esc(d.t)}">${cov(d)}
+      <div class="meta"><p>${esc(d.t)}</p><span>${esc(d.a)} · ${d.q}</span></div>
+      <div class="acts"><span class="done"></span></div></div>`).join('');
+  $('#dlBody').innerHTML=h;
+  $$('#dlBody .row[data-t]').forEach(r=>r.onclick=()=>{const t=T.find(y=>y.t===r.dataset.t);if(t)play(t)});
+}
+
+/* ---------------- player ---------------- */
+function play(t,preview){
+  const isNew=!cur||cur.t!==t.t;
+  cur=t; if(isNew){pos=0;queue=T.slice();qi=Math.max(0,T.findIndex(x=>x.t===t.t));}
+  playing=true;
+  document.documentElement.style.setProperty('--c1',t.c[0]);
+  document.documentElement.style.setProperty('--c2',t.c[1]);
+  $('#miniArt').style.cssText=`--c1:${t.c[0]};--c2:${t.c[1]}`;
+  $('#npArt').style.cssText=`--c1:${t.c[0]};--c2:${t.c[1]}`;
+  $('#miniArt').innerHTML=artHTML(t);
+  $('#npArtImg').innerHTML=artHTML(t);
+  paintBg(t);
+  $('#miniT').textContent=t.t;$('#miniA').textContent=t.a;
+  $('#npT').textContent=t.t;$('#npA').textContent=t.a;
+  $('#npFrom').textContent=preview?'试听 · '+t.src:'曲库';
+  $('#tDur').textContent=fmt(t.d);
+  $('#mini').classList.remove('hide');
+  $('#btnPlay').classList.remove('play');$('#miniBtn').classList.remove('play');
+  $('#btnPlay').classList.add('pause');$('#miniBtn').classList.add('pause');
+  $('#btnPlay').innerHTML='<svg viewBox="0 0 24 24"><rect x="7" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.4" y="5" width="3.6" height="14" rx="1.2"/></svg>';
+  renderLyr();
+  clearInterval(timer);timer=setInterval(tick,250);
+  openNP();
+  tick();
+}
+function tick(){
+  if(!playing||!cur)return;
+  pos+=0.25;
+  if(pos>=cur.d){
+    if(repeat==='one'){pos=0}
+    else{next();return}
+  }
+  paint();
+}
+function paint(){
+  const p=Math.min(100,pos/cur.d*100);
+  $('#barFill').style.width=p+'%';$('#barDot').style.left=p+'%';
+  $('#miniBar').style.width=p+'%';
+  $('#tCur').textContent=fmt(pos);
+  syncLyr();
+}
+function pause(){
+  playing=!playing;
+  const b=$('#btnPlay'),m=$('#miniBtn');
+  b.classList.toggle('play',!playing);b.classList.toggle('pause',playing);
+  m.classList.toggle('play',!playing);m.classList.toggle('pause',playing);
+  b.innerHTML=playing?'<svg viewBox="0 0 24 24"><rect x="7" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.4" y="5" width="3.6" height="14" rx="1.2"/></svg>'
+                     :'<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>';
+  if(!playing)$$('#spec i').forEach(b=>b.style.height='4px');
+}
+function next(){if(!cur)return;
+  if(shuffle){qi=Math.floor(Math.random()*T.length)}else{qi=(qi+1)%T.length}
+  play(T[qi]);
+}
+function prev(){if(!cur)return;qi=(qi-1+T.length)%T.length;play(T[qi])}
+
+$('#btnPlay').onclick=e=>{e.stopPropagation();pause()};
+$('#miniBtn').onclick=e=>{e.stopPropagation();pause()};
+$('#miniNext').onclick=e=>{e.stopPropagation();next()};
+$('#btnNext').onclick=next;$('#btnPrev').onclick=prev;
+$('#btnShuffle').onclick=e=>{shuffle=!shuffle;e.currentTarget.classList.toggle('dim',!shuffle);toast(shuffle?'随机播放：开':'随机播放：关')};
+$('#btnRepeat').onclick=e=>{repeat=repeat==='all'?'one':'all';e.currentTarget.classList.toggle('dim',repeat!=='all');toast(repeat==='one'?'单曲循环':'列表循环')};
+$('#btnRepeat').classList.remove('dim');
+
+/* progress drag */
+const bar=$('#bar');let drag=false;
+const seek=e=>{const r=bar.getBoundingClientRect();let x=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+  pos=Math.max(0,Math.min(1,x/r.width))*cur.d;paint()};
+bar.addEventListener('mousedown',e=>{if(!cur)return;drag=true;seek(e)});
+window.addEventListener('mousemove',e=>{if(drag)seek(e)});
+window.addEventListener('mouseup',()=>drag=false);
+bar.addEventListener('touchstart',e=>{if(!cur)return;drag=true;seek(e)},{passive:true});
+window.addEventListener('touchmove',e=>{if(drag)seek(e)},{passive:true});
+window.addEventListener('touchend',()=>drag=false);
+
+/* spectrum */
+const spec=$('#spec');
+for(let i=0;i<34;i++)spec.appendChild(document.createElement('i'));
+setInterval(()=>{
+  if(!playing){return}
+  $$('#spec i').forEach((b,i)=>{
+    const base=Math.abs(Math.sin(Date.now()/380+i*0.55))*44;
+    b.style.height=(5+base*Math.random()).toFixed(0)+'px';
+  });
+},110);
+
+/* lyrics */
+function renderLyr(){
+  const l=LYR[T.find(x=>x.t===cur.t)?T.find(x=>x.t===cur.t).id:0]||[['0','（暂无歌词，可点击右侧「校准」手动关联 .lrc 文件）']];
+  $('#lyrBody').innerHTML=l.map((x,i)=>`<p data-i="${i}" data-ts="${x[0]}">${esc(x[1])}</p>`).join('');
+  $$('#lyrBody p').forEach(p=>p.onclick=()=>{pos=+p.dataset.ts;paint()});
+}
+function syncLyr(){
+  const ps=$$('#lyrBody p');if(!ps.length)return;
+  let idx=0;ps.forEach((p,i)=>{if(+p.dataset.ts<=pos)idx=i});
+  ps.forEach((p,i)=>{
+    p.classList.toggle('cur',i===idx);
+    p.classList.toggle('near',Math.abs(i-idx)===1);
+  });
+  const c=ps[idx];
+  if(c&&$('#lyr').classList.contains('on')){
+    const b=$('#lyrBody');
+    b.scrollTo({top:c.offsetTop-b.clientHeight/2+40,behavior:'smooth'});
+  }
+}
+
+/* now playing open/close */
+function openNP(){$('#np').classList.add('on')}
+$('#npClose').onclick=()=>$('#np').classList.remove('on');
+$('#npMore').onclick=()=>toast('更多：定时关闭 / EQ / 添加到歌单');
+$('#mini').onclick=openNP;
+$('#openLyr').onclick=()=>{$('#lyr').classList.add('on');setTimeout(syncLyr,60)};
+$('#lyrClose').onclick=()=>$('#lyr').classList.remove('on');
+$('#lyrFit').onclick=()=>toast('歌词校准：手动偏移 ±0.5s');
+$('#openQueue').onclick=()=>toast('播放队列：'+T.length+' 首');
+
+/* tabs */
+$$('.tab').forEach(b=>b.onclick=()=>{
+  $$('.tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  const id=b.dataset.p;
+  $$('.page').forEach(p=>{p.classList.toggle('on',p.id===id)});
+  if(id==='p-dl')renderDl();
+});
+
+/* keyboard */
+window.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&cur){e.preventDefault();pause()}
+});
+
+/* 封面模式切换：插画 / 真实照片 */
+$('#artToggle').onclick=()=>{
+  PHOTO=!PHOTO;
+  $('#artToggle').textContent=PHOTO?'封面：真实照片':'封面：矢量插画';
+  $('#artToggle').classList.toggle('on',PHOTO);
+  renderLib();renderRes();renderDl();
+  if(cur){$('#miniArt').innerHTML=artHTML(cur);$('#npArtImg').innerHTML=artHTML(cur);paintBg(cur)}
+  toast(PHOTO?'已切换真实照片（来自 picsum.photos，失败会自动回落）':'已切换矢量插画封面');
+};
+
+/* 首屏：曲库页背景默认用第一首的封面 */
+paintBg(T[0]);
+renderLib();renderRes();renderDl();
+</script>
+</body>
+</html>
