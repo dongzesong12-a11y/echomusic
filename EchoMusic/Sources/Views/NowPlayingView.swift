@@ -95,7 +95,8 @@ struct NowPlayingView: View {
                 Button { player.toggleShuffle() } label: {
                     Image(systemName: "shuffle")
                         .font(.title3)
-                        .foregroundStyle(player.shuffle ? .accentColor : .primary)
+                        // 三元两侧必须同为 Color：.accentColor 与 .primary 分属不同 ShapeStyle 类型，无法统一推断
+                        .foregroundStyle(player.shuffle ? Color.accentColor : Color.primary)
                 }
                 Spacer()
                 Button { player.previous() } label: {
@@ -115,7 +116,7 @@ struct NowPlayingView: View {
                 Button { player.cycleRepeat() } label: {
                     Image(systemName: repeatModeIcon)
                         .font(.title3)
-                        .foregroundStyle(player.repeatMode == .off ? .primary : .accentColor)
+                        .foregroundStyle(player.repeatMode == .off ? Color.primary : Color.accentColor)
                 }
                 Spacer()
             }

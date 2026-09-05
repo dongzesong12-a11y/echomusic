@@ -118,7 +118,9 @@ final class PlayerService: ObservableObject {
             player?.automaticallyWaitsToMinimizeStalling = true
             let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
             timeObserverToken = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] t in
-                Task { @MainActor in self?.handleTime(t) }
+                // 只把 Double 带进 Task，避免 CMTime 的 Sendable 推断问题（Swift 6 严格并发）
+                let seconds = t.seconds
+                Task { @MainActor in self?.handleTime(seconds: seconds) }
             }
         }
     }
@@ -140,13 +142,13 @@ final class PlayerService: ObservableObject {
         updateNowPlaying()
     }
 
-    private func handleTime(_ t: CMTime) {
-        currentTime = t.seconds
+    private func handleTime(seconds: Double) {
+        currentTime = seconds
         if let d = player?.currentItem?.duration, d.isValid, d.seconds.isFinite, d.seconds > 0 {
             duration = d.seconds
         }
         // 自然结束 -> 自动下一首
-        if duration > 1, t.seconds >= duration - 0.4 {
+        if duration > 1, seconds >= duration - 0.4 {
             next()
         }
         updateNowPlayingElapsed()
