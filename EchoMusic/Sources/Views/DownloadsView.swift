@@ -9,7 +9,7 @@ struct DownloadsView: View {
                     .foregroundStyle(.secondary)
                 Text("下载")
                     .font(.largeTitle.bold())
-                Text("M0 骨架已装通")
+                Text("M1 播放内核已接")
                     .foregroundStyle(.secondary)
                 Text("M2 接入后台断点续传下载管理")
                     .font(.footnote)

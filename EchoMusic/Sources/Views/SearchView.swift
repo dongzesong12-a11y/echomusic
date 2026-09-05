@@ -9,7 +9,7 @@ struct SearchView: View {
                     .foregroundStyle(.secondary)
                 Text("搜索")
                     .font(.largeTitle.bold())
-                Text("M0 骨架已装通")
+                Text("M1 播放内核已接")
                     .foregroundStyle(.secondary)
                 Text("M2 接入 SourceProvider 聚合搜索")
                     .font(.footnote)

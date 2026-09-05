@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFAudio
+import SwiftData
 
 @main
 struct EchoMusicApp: App {
@@ -9,6 +10,7 @@ struct EchoMusicApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(player)
+                .modelContainer(for: StoredTrack.self)
                 .task {
                     configureAudioSession()
                 }
